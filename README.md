@@ -1,43 +1,34 @@
 # Simms Wader Size Finder
 
-A web-based tool to help you find the perfect Simms wader size based on your measurements.
+An open source project created by Scott Diprose to give anglers and stores a modern tool to help fit waders in store or online.
 
 ## What is this tool for?
 
-The Simms Wader Size Finder is designed to help anglers determine their correct wader size. By taking a few simple body measurements (chest, waist, hips, inseam, and shoe size), the tool compares your measurements against Simms' official size charts and recommends the closest fitting size.
+The Simms Wader Size Finder is designed to help anglers and retailers quickly identify the closest-fitting Simms wader size using a few simple measurements. It can be used in-store while trying on gear, or online when customers want a better fit before purchasing.
 
-### Features:
-- **Easy measurement input** - Enter your measurements in either centimeters or inches
-- **Size categories** - Supports Men's, Women's, and Kids' wader sizes
-- **Model-specific sizing** - Filter results by specific Simms wader models
-- **Price information** - View RRP (NZD) pricing for available models
-- **Fit guidance** - Get detailed feedback on how well each size matches your measurements
-- **Boot sizing** - Automatic wading boot size recommendations
-- **Alternative options** - See other sizes worth trying if between sizes
+## Features
+- Easy measurement input in centimetres or inches
+- Men’s, Women’s, and Kids’ sizing support
+- Model-specific matching for available Simms waders
+- Fit guidance showing how close the size is to the user’s measurements
+- Price information and recommended size alternatives
+- Boot sizing guidance for wading boots
+
+## Open the tool
+
+https://scottdiprose-code.github.io/simms-wader-tool/
 
 ## How to use
+1. Select the category: Men, Women, or Kids
+2. Choose your measurement unit: cm or inches
+3. Enter chest, waist, hips, inseam, and shoe size
+4. Optionally choose a model to check availability
+5. Review the recommended size, fit notes, and alternative options
 
-🔗 **[Open the Wader Size Finder](https://scottdiprose-code.github.io/simms-wader-tool/)**
+## Purpose
 
-1. Select whether you're fitting for Men's, Women's, or Kids' waders
-2. Choose your preferred measurement units (cm or inches)
-3. Enter your measurements:
-   - **Chest:** Around the widest part of your chest
-   - **Waist:** Around the narrowest part, usually just above your belly button
-   - **Hips:** Around the fullest part, standing naturally
-   - **Inseam:** Along the inside of your leg, from the crotch to the floor
-   - **Shoe size:** Your usual street shoe size
-4. Optionally select a specific Simms model to see availability
-5. Your closest wader size will appear instantly with detailed fit information
+This project was created to make fitting Simms waders easier and more consistent for both anglers and stores. It helps reduce guesswork, improve fit confidence, and support better purchasing decisions whether the customer is trying gear in person or buying remotely.
 
-## Size Data Source
+## Notes
 
-Sizes follow the Simms stockingfoot size charts, with model availability and RRP (NZD) based on the 2026 Q4 price list. Not every wader comes in every size, so always check that your recommended size is available in your chosen model.
-
-## Technical Details
-
-This is a client-side web application built with vanilla HTML, CSS, and JavaScript. All size matching calculations are performed in the browser—no data is sent to any server.
-
----
-
-*Created for anglers seeking the perfect fit for their Simms waders.*
+Sizes follow the Simms stockingfoot size charts, and model availability and RRP (NZD) follow the 2026 Q4 price list. Not every wader comes in every size, so check the final recommendation against the model you want.
