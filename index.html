@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wader size finder</title>
+<style>
+:root {
+  --bg: #F2F5F6;
+  --surface: #FFFFFF;
+  --field: #F7F9FA;
+  --ink: #14232B;
+  --muted: #566870;
+  --line: #D6DFE3;
+  --accent: #0C6B7A;
+  --tag: #0F2B33;
+  --tag-ink: #EAF4F5;
+  --tag-soft: #A9C3C9;
+  --tag-hi: #9FDCD3;
+  --ok: #17704A;
+  --warn: #8A5000;
+  --bad: #A12B2B;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #0D1A1F;
+  --surface: #14262D;
+  --field: #0F1F25;
+  --ink: #E8F0F2;
+  --muted: #9CB1B9;
+  --line: #29404A;
+  --accent: #5CC3D1;
+  --tag: #1E4450;
+  --tag-ink: #F0F8F9;
+  --tag-soft: #B4CDD3;
+  --tag-hi: #A9E6DC;
+  --ok: #5FD19B;
+  --warn: #F0B35A;
+  --bad: #FF8A8A;
+  color-scheme: dark;
+}
+:root[data-bg="transparent"] body { background: transparent; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.app { max-width: 980px; margin: 0 auto; padding: 20px 16px 28px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+h1 { margin: 0 0 4px; font-size: clamp(24px, 4.2vw, 32px); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
+.lede { margin: 0; color: var(--muted); max-width: 46ch; }
+h2 { margin: 0 0 16px; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+h3 { margin: 0 0 8px; font-size: 15px; font-weight: 650; }
+
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 820px) {
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .result { position: sticky; top: 16px; }
+}
+.panel, .result { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+.result { padding: 14px; }
+
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend, .lbl { padding: 0; margin: 0 0 8px; font-size: 14px; font-weight: 600; display: block; }
+.group { margin-bottom: 18px; }
+
+/* segmented controls */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--field); position: relative; }
+.seg.block { display: flex; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { flex: 1; text-align: center; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; color: var(--muted); user-select: none; white-space: nowrap; }
+.seg input:checked + label { background: var(--ink); color: var(--surface); }
+.seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+.seg.sm label { padding: 6px 13px; font-size: 14px; }
+
+/* fields */
+.fields { display: grid; gap: 14px; margin-bottom: 6px; }
+.row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+.f label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.ctl { display: flex; align-items: stretch; border: 1.5px solid var(--line); border-radius: 10px; background: var(--field); overflow: hidden; }
+.ctl:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.ctl.invalid { border-color: var(--bad); }
+.ctl input, .ctl select { font: inherit; font-size: 17px; color: var(--ink); background: transparent; border: 0; padding: 11px 12px; min-width: 0; width: 100%; outline: none; font-variant-numeric: tabular-nums; }
+.ctl select { width: auto; flex: 0 0 auto; border-left: 1.5px solid var(--line); padding-right: 8px; cursor: pointer; }
+.ctl input::placeholder { color: color-mix(in srgb, var(--muted) 65%, transparent); }
+.unit { display: flex; align-items: center; padding: 0 12px 0 0; color: var(--muted); font-size: 14px; }
+.hint { margin: 5px 0 0; font-size: 13px; color: var(--muted); }
+.err { margin: 5px 0 0; font-size: 13px; color: var(--bad); font-weight: 600; }
+.err:empty { display: none; }
+.readout { margin: 14px 0 0; padding: 11px 14px; border-radius: 10px; background: var(--field); border: 1px dashed var(--line); font-size: 14.5px; color: var(--muted); }
+.readout strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.readout[hidden] { display: none; }
+
+details.how { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+details.how summary { cursor: pointer; font-weight: 600; font-size: 14.5px; }
+details.how summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+details.how ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 14.5px; }
+details.how li { margin-bottom: 5px; }
+details.how li strong { color: var(--ink); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+.btn-ghost { font: inherit; font-size: 14.5px; font-weight: 600; background: none; color: var(--muted); border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+.btn-ghost:hover { color: var(--ink); border-color: var(--muted); }
+.btn-ghost:focus-visible, .cta:focus-visible, .jump:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.jump { display: none; font-weight: 650; font-size: 14.5px; color: var(--accent); text-decoration: none; padding: 9px 0; }
+.jump.show { display: inline-block; }
+@media (min-width: 820px) { .jump.show { display: none; } }
+
+/* result */
+.empty { padding: 34px 18px; text-align: center; color: var(--muted); }
+.empty-title { margin: 0 0 6px; font-size: 18px; font-weight: 650; color: var(--ink); }
+.empty-body { margin: 0 auto; max-width: 34ch; }
+
+.tag { position: relative; background: var(--tag); color: var(--tag-ink); border-radius: 14px; padding: 38px 20px 26px; text-align: center; }
+.tag::before { content: ""; position: absolute; inset: 7px; border: 1.5px dashed rgba(234, 244, 245, 0.26); border-radius: 9px; pointer-events: none; }
+.tag-hole { position: absolute; top: 16px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--surface); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.tag-kicker { margin: 0 0 4px; font-size: 14px; color: var(--tag-soft); }
+.tag-size { margin: 0; font-size: clamp(44px, 11vw, 66px); line-height: 1.02; font-weight: 750; letter-spacing: -0.03em; color: var(--tag-hi); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tag-sub { margin: 8px 0 0; font-size: 15.5px; }
+.tag-badge { display: inline-block; margin-top: 12px; padding: 4px 11px; border-radius: 99px; border: 1px solid rgba(234, 244, 245, 0.4); font-size: 13px; }
+
+.body { padding: 18px 8px 8px; }
+.verdict { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 14px; font-weight: 650; }
+.verdict .mark { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; margin-top: 1px; }
+.verdict.ok .mark { background: var(--ok); }
+.verdict.close .mark { background: var(--warn); }
+.verdict.none .mark { background: var(--bad); }
+:root[data-theme="dark"] .verdict .mark { color: #0D1A1F; }
+.verdict small { display: block; font-weight: 400; color: var(--muted); font-size: 14.5px; }
+
+table.fit { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 8px; }
+.fit th { text-align: left; font-weight: 600; font-size: 13px; color: var(--muted); padding: 0 0 8px; }
+.fit th.num, .fit td.num { text-align: right; padding-left: 12px; }
+.fit td { padding: 11px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.fit td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fit .name { font-weight: 600; }
+.st { display: block; font-size: 13.5px; margin-top: 1px; font-weight: 500; }
+.st.ok { color: var(--ok); }
+.st.off { color: var(--warn); }
+.st::before { font-weight: 800; margin-right: 5px; }
+.st.ok::before { content: "\2713"; }
+.st.off::before { content: "!"; }
+
+.alts { list-style: none; margin: 0; padding: 0; }
+.alts li { padding: 11px 0; border-top: 1px solid var(--line); display: grid; gap: 2px; }
+.alts .a-name { font-weight: 650; }
+.alts .a-name span { font-weight: 400; color: var(--muted); }
+.alts .a-why { font-size: 14px; color: var(--muted); }
+.alts.models li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.price { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.plain { margin: 0; color: var(--muted); font-size: 14.5px; }
+.plain strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.section { margin-top: 18px; }
+.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14.5px; }
+.notes li { margin-bottom: 6px; }
+.cta { display: inline-block; margin-top: 18px; padding: 12px 20px; background: var(--ink); color: var(--surface); text-decoration: none; font-weight: 650; border-radius: 10px; }
+.foot { margin: 18px 2px 0; font-size: 13px; color: var(--muted); max-width: 80ch; }
+
+/* measuring figure */
+.fig { width: 100%; max-width: 250px; height: auto; display: block; margin: 0 auto; }
+.fig .body circle, .fig .body path { fill: var(--field); stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; }
+.fig .strap { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; }
+.fig .ml { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; transition: stroke .15s, stroke-width .15s; }
+.fig .lead { fill: none; stroke: var(--line); stroke-width: 1.2; }
+.fig .dash { stroke-dasharray: 3 3; }
+.fig text { font: 600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: var(--muted); transition: fill .15s; }
+.fig .foot { fill: color-mix(in srgb, var(--muted) 22%, transparent); stroke: none; transition: fill .15s; }
+.fig [data-m].on .ml { stroke: var(--accent); stroke-width: 3.5; }
+.fig [data-m].on text { fill: var(--accent); }
+.fig [data-m].on .foot { fill: var(--accent); }
+.fig-wrap { margin: 4px 0 14px; }
+.empty .fig { margin-bottom: 14px; }
+details.how .fig-wrap { margin-top: 12px; }
+
+/* range gauge under each measurement */
+.gauge { display: block; position: relative; height: 8px; margin: 9px 0 3px; border-radius: 99px; background: var(--line); max-width: 190px; }
+.gauge .band { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.gauge .mark { position: absolute; top: -3px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--ink); }
+.gauge.off .mark { background: var(--warn); }
+.legend { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.thumb { width: 46px; height: 46px; object-fit: contain; border-radius: 8px; background: var(--field); flex: none; }
+.alts.models li .m-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tag { animation: pop .22s ease-out; }
+  @keyframes pop { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="head">
+    <div>
+      <h1>Wader size finder</h1>
+      <p class="lede">Take a few measurements and get the closest wader size, the models it comes in, and the price.</p>
+    </div>
+    <div class="seg sm" id="unitSeg" role="radiogroup" aria-label="Measurement units">
+      <input type="radio" name="unit" id="u-cm" value="cm"><label for="u-cm">cm</label>
+      <input type="radio" name="unit" id="u-in" value="in"><label for="u-in">inches</label>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-details">
+      <h2 id="h-details">Your measurements</h2>
+
+      <fieldset class="group">
+        <legend>Fitting for</legend>
+        <div class="seg block">
+          <input type="radio" name="cat" id="c-men" value="Men"><label for="c-men">Men</label>
+          <input type="radio" name="cat" id="c-women" value="Women"><label for="c-women">Women</label>
+          <input type="radio" name="cat" id="c-kids" value="Kids"><label for="c-kids">Kids</label>
+        </div>
+      </fieldset>
+
+      <div class="group" id="modelGroup" hidden>
+        <label class="lbl" for="modelSel">Model</label>
+        <div class="ctl"><select id="modelSel" style="border-left:0;width:100%"></select></div>
+      </div>
+
+      <div class="fields" id="fields"></div>
+      <p class="readout" id="girthNote" hidden></p>
+
+      <details class="how">
+        <summary>How to measure</summary>
+        <div class="fig-wrap" id="howFig"></div>
+        <ul>
+          <li><strong>Chest:</strong> around the widest part of your chest.</li>
+          <li><strong>Waist:</strong> around the narrowest part, usually just above your belly button.</li>
+          <li><strong>Hips:</strong> around the fullest part, standing naturally.</li>
+          <li><strong>Inseam:</strong> along the inside of your leg, from the crotch to the floor. No tape? Use string and hold it against a ruler.</li>
+          <li><strong>Shoe size:</strong> your usual street shoe size. Stockingfoot waders are sized to this.</li>
+          <li>Wear thin base layers while measuring, not jeans.</li>
+        </ul>
+      </details>
+
+      <div class="actions">
+        <button type="button" class="btn-ghost" id="reset">Clear and start again</button>
+        <a class="jump" id="jump" href="#result">See your size</a>
+      </div>
+    </section>
+
+    <section class="result" id="result" aria-labelledby="h-result">
+      <h2 class="sr-only" id="h-result">Your size</h2>
+      <div id="resultBody" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <p class="foot">Sizes follow the Simms stockingfoot size charts, and model availability and RRP (NZD) follow the 2026 Q4 price list. Not every wader comes in every size, so check your size is made in the model you're buying. If you can, try on in store with the layers you'll wear.</p>
+</main>
+
+<script>
+/*LOGIC_START*/
+/* ------------------------------------------------------------------
+   Size chart data. One object per size row.
+   size: size code as used by MTP (MS, MK, MKS...)   name: spelled-out size
+   cat: Men | Women | Kids
+   girth/inseam/shoe/height/chest: [low, high] in inches (shoe in US sizes)
+   To update a season's chart or models, edit CHART and MODELS only.
+------------------------------------------------------------------- */
+const CHART = [
+  {"foot":"stockingfoot","cat":"Men","size":"S","name":"Small","girth":[35,36],"inseam":[31,32],"shoe":[7,8]},
+  {"foot":"stockingfoot","cat":"Men","size":"SK","name":"Small King","girth":[37,38],"inseam":[31,32],"shoe":[7,8]},
+  {"foot":"stockingfoot","cat":"Men","size":"MS","name":"Medium Short","girth":[39,40],"inseam":[31,32],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"M","name":"Medium","girth":[39,40],"inseam":[33,34],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"MK","name":"Medium King","girth":[41,42],"inseam":[33,34],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"MKS","name":"Medium King Short","girth":[41,42],"inseam":[31,32],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"ML","name":"Medium Long","girth":[39,40],"inseam":[35,36],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"LS","name":"Large Short","girth":[43,44],"inseam":[31,32],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"L (9-11)","name":"Large","girth":[43,44],"inseam":[33,34],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"L (12-13)","name":"Large, 12-13 foot","girth":[43,44],"inseam":[33,34],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Men","size":"LK","name":"Large King","girth":[45,46],"inseam":[33,34],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"LKS","name":"Large King Short","girth":[45,46],"inseam":[31,32],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"LL (9-11)","name":"Large Long","girth":[43,44],"inseam":[35,36],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"LL (12-13)","name":"Large Long, 12-13 foot","girth":[43,44],"inseam":[35,36],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Men","size":"XLS","name":"XL Short","girth":[47,48],"inseam":[33,34],"shoe":[9,11]},
+  {"foot":"stockingfoot","cat":"Men","size":"XL","name":"XL","girth":[47,48],"inseam":[35,36],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Men","size":"XLK","name":"XL King","girth":[49,50],"inseam":[35,36],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Men","size":"XXL","name":"2XL","girth":[51,52],"inseam":[35,36],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Men","size":"XLL","name":"XL Long","girth":[47,48],"inseam":[37,38],"shoe":[12,13]},
+  {"foot":"stockingfoot","cat":"Women","size":"SS","name":"Small Short","girth":[37,37],"inseam":[28,29],"shoe":[6,7]},
+  {"foot":"stockingfoot","cat":"Women","size":"S","name":"Small","girth":[37,37],"inseam":[31,32],"shoe":[6,7]},
+  {"foot":"stockingfoot","cat":"Women","size":"SF","name":"Small Full","girth":[38,38],"inseam":[31,32],"shoe":[6,7]},
+  {"foot":"stockingfoot","cat":"Women","size":"MS","name":"Medium Short","girth":[39,39],"inseam":[28,29],"shoe":[8,9]},
+  {"foot":"stockingfoot","cat":"Women","size":"M","name":"Medium","girth":[39,39],"inseam":[31,32],"shoe":[8,9]},
+  {"foot":"stockingfoot","cat":"Women","size":"MF","name":"Medium Full","girth":[40,40],"inseam":[31,32],"shoe":[8,9]},
+  {"foot":"stockingfoot","cat":"Women","size":"MT","name":"Medium Tall","girth":[39,39],"inseam":[33,34],"shoe":[8,9]},
+  {"foot":"stockingfoot","cat":"Women","size":"LS","name":"Large Short","girth":[41,41],"inseam":[28,29],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Women","size":"L","name":"Large","girth":[41,41],"inseam":[31,32],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Women","size":"LF","name":"Large Full","girth":[43,43],"inseam":[31,32],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Women","size":"LT","name":"Large Tall","girth":[41,41],"inseam":[33,34],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Women","size":"XL","name":"XL","girth":[45,45],"inseam":[31,32],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Women","size":"2XL","name":"2XL","girth":[49,49],"inseam":[31,32],"shoe":[9,10]},
+  {"foot":"stockingfoot","cat":"Kids","size":"S","name":"Small","height":[47,52],"chest":[25,27],"inseam":[21,23],"shoe":[5,6]},
+  {"foot":"stockingfoot","cat":"Kids","size":"M","name":"Medium","height":[53,58],"chest":[28,30],"inseam":[24,26],"shoe":[5,6]},
+  {"foot":"stockingfoot","cat":"Kids","size":"L","name":"Large","height":[59,64],"chest":[31,32],"inseam":[27,29],"shoe":[7,8]}
+];
+
+/* Models and their RRP (NZD), from the 2026 Q4 MTP Simms price list.
+   sizes = the size codes (row.size above) that the model is made in. */
+const MODELS = [
+  {"name":"G4Z","cat":"Men","rrp":2199.99,"sizes":["S","MS","M","MK","ML","L (9-11)","LS","L (12-13)","LK","XL","XLS","XXL"]},
+  {"name":"G3Z Pro","cat":"Men","rrp":1799.99,"sizes":["S","MS","M","MK","LS","L (9-11)","L (12-13)","LK","LL (9-11)","LL (12-13)","XL"]},
+  {"name":"G3 Pro","cat":"Men","rrp":1599.99,"sizes":["S","SK","MS","M","MK","ML","MKS","L (9-11)","L (12-13)","LKS","LK","XL","XLS","XLK","XLL","XXL"]},
+  {"name":"Flyweight Packable","cat":"Men","rrp":799.99,"sizes":["S","M","L (9-11)","XL"]},
+  {"name":"Freestone Z","cat":"Men","rrp":899.99,"sizes":["S","M","MS","MK","ML","L (9-11)","L (12-13)","LS","LK","LL (12-13)","XL","XXL"]},
+  {"name":"Freestone","cat":"Men","rrp":699.99,"sizes":["S","M","MS","MK","ML","L (9-11)","L (12-13)","LS","LK","LL (9-11)","LL (12-13)","XL","XLS","XXL"]},
+  {"name":"Tributary","cat":"Men","rrp":499.99,"sizes":["S","M","MS","MK","ML","L (9-11)","L (12-13)","LS","LK","LL (9-11)","LL (12-13)","XL","XLS","XXL"]},
+  {"name":"G3 Pro","cat":"Women","rrp":1599.99,"sizes":["S","M","MF","L","XL"]},
+  {"name":"Freestone","cat":"Women","rrp":699.99,"sizes":["S","SF","M","MF","L","LF","XL","2XL"]},
+  {"name":"Tributary","cat":"Women","rrp":499.99,"sizes":["S","M","MF","L","LF","XL"]},
+  {"name":"Tributary","cat":"Kids","rrp":449.99,"sizes":["S","M","L"]}
+];
+
+const IN = 2.54;
+const SHOE_TABLES = {
+  Men:   [[5,38,4.5],[6,39,5.5],[7,40,6],[8,41,7],[9,42,8],[9.5,42.5,8.5],[10,43,9],[10.5,43.5,9.5],[11,44,10],[11.5,44.5,10.5],[12,45,11.5],[13,46,12.5],[14,47,13.5]],
+  Women: [[5,35,2.5],[6,36,3.5],[7,37.5,4.5],[8,38.5,5.5],[9,40,6.5],[10,42,7.5],[11,43.5,8.5],[12,44.5,9.5]]
+};
+const CAT_LABEL = { Men: "Men's", Women: "Women's", Kids: "Kids'" };
+
+/* Cost weights: a size that runs smaller than the body costs more than one
+   that runs larger, because a tight wader is the worse outcome. */
+const DIMS = {
+  adult: [
+    { key: 'girth',  label: 'Largest girth', kind: 'len',  wAbove: 6,   wBelow: 2.5 },
+    { key: 'inseam', label: 'Inseam',        kind: 'len',  wAbove: 3.5, wBelow: 1.5 },
+    { key: 'shoe',   label: 'Shoe size',     kind: 'shoe', wAbove: 2,   wBelow: 1 }
+  ],
+  kids: [
+    { key: 'height', label: 'Height',        kind: 'len',  wAbove: 3,   wBelow: 1.5 },
+    { key: 'chest',  label: 'Chest',         kind: 'len',  wAbove: 6,   wBelow: 2.5 },
+    { key: 'inseam', label: 'Inseam',        kind: 'len',  wAbove: 3.5, wBelow: 1.5 },
+    { key: 'shoe',   label: 'Shoe size',     kind: 'shoe', wAbove: 2,   wBelow: 1 }
+  ]
+};
+
+function toUS(cat, sys, v) {
+  const t = SHOE_TABLES[cat];
+  if (sys === 'US' || !t) return v;
+  const idx = sys === 'EU' ? 1 : 2;
+  let best = null;
+  for (const r of t) {
+    const d = Math.abs(r[idx] - v);
+    if (!best || d < best.d) best = { d, us: r[0] };
+  }
+  return best.us;
+}
+function shoeSourceRange(cat, sys) {
+  if (cat === 'Kids') return [1, 9];
+  const t = SHOE_TABLES[cat];
+  if (sys === 'US') return cat === 'Men' ? [3, 16] : [3, 13];
+  const idx = sys === 'EU' ? 1 : 2;
+  const col = t.map(r => r[idx]);
+  return [Math.min(...col) - 1, Math.max(...col) + 1];
+}
+
+function rowKey(r) { return r.cat + '|' + r.size; }
+
+function evalRow(row, body, dims) {
+  let cost = 0;
+  const parts = dims.map(d => {
+    const [lo, hi] = row[d.key];
+    const b = body[d.key];
+    let delta = 0, side = 0;
+    if (b > hi) { delta = b - hi; side = 1; }
+    else if (b < lo) { delta = lo - b; side = -1; }
+    cost += delta * (side === 1 ? d.wAbove : d.wBelow);
+    return { key: d.key, label: d.label, kind: d.kind, body: b, band: [lo, hi], delta, side };
+  });
+  return { row, cost, parts };
+}
+
+/* ctx: { cat, foot, body, modelName } -> result */
+function findSize(ctx) {
+  const dims = ctx.cat === 'Kids' ? DIMS.kids : DIMS.adult;
+  const foot = ctx.cat === 'Men' ? ctx.foot : 'stockingfoot';
+  const all = CHART.filter(r => r.cat === ctx.cat && r.foot === foot)
+                   .map(r => evalRow(r, ctx.body, dims));
+  const model = MODELS.find(m => m.name === ctx.modelName && m.cat === ctx.cat);
+  const allowed = model ? new Set(model.sizes.map(s => ctx.cat + '|' + s)) : null;
+  const pool = allowed ? all.filter(e => allowed.has(rowKey(e.row))) : all;
+  const rank = (a, b) => a.cost - b.cost;
+  all.sort(rank); pool.sort(rank);
+  if (!pool.length) return { empty: true, model: model || null };
+
+  const top = pool[0];
+  const level = top.parts.every(p => p.delta === 0) ? 'exact'
+              : top.parts.every(p => p.delta <= 1) ? 'close' : 'none';
+  let alts = [];
+  if (level !== 'none') {
+    alts = pool.slice(1)
+      .filter(e => e.cost <= top.cost + 3.5)
+      .filter(e => e.parts.every(p => p.delta <= 2))
+      .filter(e => e.parts.every(p => !(p.side === 1 && p.delta > 0)))
+      .slice(0, 2);
+  }
+  let idealElsewhere = null;
+  if (allowed && all[0] && !allowed.has(rowKey(all[0].row))) idealElsewhere = all[0];
+  const availableIn = MODELS.filter(m => m.cat === ctx.cat && m.sizes.includes(top.row.size));
+  return { top, level, alts, foot, model: model || null, idealElsewhere, availableIn };
+}
+/*LOGIC_END*/
+
+/* ------------------------------ UI ------------------------------ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const params = new URLSearchParams(location.search);
+
+const state = {
+  unit: params.get('units') === 'in' ? 'in' : 'cm',
+  cat: { men: 'Men', women: 'Women', kids: 'Kids' }[(params.get('for') || '').toLowerCase()] || 'Men',
+  foot: 'stockingfoot',
+  shoeSys: 'US',
+  model: '',
+  focus: null,
+  vals: { chest: '', waist: '', hips: '', inseam: '', shoe: '', height: '' }
+};
+if (params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+if (params.get('bg') === 'transparent') document.documentElement.dataset.bg = 'transparent';
+
+const num = s => {
+  if (s === '' || s == null) return null;
+  const n = Number(String(s).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+const toIn = v => state.unit === 'cm' ? v / IN : v;
+const r1 = x => Math.round(x * 10) / 10;
+const fmtLen = inches => state.unit === 'cm' ? r1(inches * IN) + ' cm' : r1(inches) + ' in';
+const fmtBand = (lo, hi) => {
+  const c = x => state.unit === 'cm' ? Math.round(x * IN) : x;
+  const u = state.unit === 'cm' ? ' cm' : ' in';
+  return lo === hi ? c(lo) + u : c(lo) + '\u2013' + c(hi) + u;
+};
+const fmtDelta = d => state.unit === 'cm' ? Math.round(d * IN) + ' cm' : r1(d) + ' in';
+const listJoin = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+
+function fieldDefs() {
+  const ph = { chest: 40, waist: 34, hips: 40, inseam: 33, height: 55 };
+  const kph = { chest: 28, inseam: 25, height: 55 };
+  if (state.cat === 'Kids') return [
+    { id: 'height', label: 'Height', hint: 'Standing, no shoes', range: [35, 75], ph: kph.height, row: 0 },
+    { id: 'chest', label: 'Chest', hint: 'Widest point', range: [18, 45], ph: kph.chest, row: 0 },
+    { id: 'inseam', label: 'Inseam', hint: 'Crotch to floor', range: [15, 35], ph: kph.inseam, row: 1 },
+    { id: 'shoe', label: 'Shoe size', hint: "Big kids' US size", shoe: true, row: 1 }
+  ];
+  return [
+    { id: 'chest', label: 'Chest', hint: 'Widest point', range: [20, 75], ph: ph.chest, row: 0 },
+    { id: 'waist', label: 'Waist', hint: 'Narrowest, above belly button', range: [20, 75], ph: ph.waist, row: 0 },
+    { id: 'hips', label: 'Hips', hint: 'Fullest point', range: [24, 80], ph: ph.hips, row: 0 },
+    { id: 'inseam', label: 'Inseam', hint: 'Crotch to floor', range: [20, 45], ph: ph.inseam, row: 1 },
+    { id: 'shoe', label: 'Shoe size', hint: 'Your usual size', shoe: true, row: 1 }
+  ];
+}
+const phFor = v => state.unit === 'cm' ? Math.round(v * IN) : v;
+
+function renderFields() {
+  const defs = fieldDefs();
+  const rows = [0, 1].map(r => defs.filter(d => d.row === r));
+  const html = rows.map(rowDefs => '<div class="row">' + rowDefs.map(d => {
+    const id = 'in-' + d.id;
+    const val = esc(state.vals[d.id]);
+    if (d.shoe) {
+      const sysSel = state.cat === 'Kids' ? '' :
+        `<select id="shoeSys" aria-label="Shoe size system">${['US', 'UK', 'EU'].map(s => `<option${s === state.shoeSys ? ' selected' : ''}>${s}</option>`).join('')}</select>`;
+      return `<div class="f"><label for="${id}">${d.label}</label>
+        <div class="ctl" id="ctl-${d.id}"><input id="${id}" data-f="${d.id}" inputmode="decimal" autocomplete="off" placeholder="e.g. ${state.cat === 'Kids' ? 6 : state.cat === 'Women' ? 8 : 10}" value="${val}" aria-describedby="hint-${d.id} err-${d.id}">${sysSel}</div>
+        <p class="hint" id="hint-${d.id}">${d.hint}</p><p class="err" id="err-${d.id}" role="alert"></p></div>`;
+    }
+    return `<div class="f"><label for="${id}">${d.label}</label>
+      <div class="ctl" id="ctl-${d.id}"><input id="${id}" data-f="${d.id}" inputmode="decimal" autocomplete="off" placeholder="e.g. ${phFor(d.ph)}" value="${val}" aria-describedby="hint-${d.id} err-${d.id}"><span class="unit">${state.unit}</span></div>
+      <p class="hint" id="hint-${d.id}">${d.hint}</p><p class="err" id="err-${d.id}" role="alert"></p></div>`;
+  }).join('') + '</div>').join('');
+  $('#fields').innerHTML = html;
+}
+
+function syncControls() {
+  $('#u-' + state.unit).checked = true;
+  $('#c-' + state.cat.toLowerCase()).checked = true;
+  const mg = $('#modelGroup');
+  const list = MODELS.filter(m => m.cat === state.cat);
+  if (!list.some(m => m.name === state.model)) state.model = '';
+  if (list.length) {
+    mg.hidden = false;
+    $('#modelSel').innerHTML = '<option value="">Any model</option>' + list.map(m => `<option value="${esc(m.name)}"${m.name === state.model ? ' selected' : ''}>${esc(m.name)}</option>`).join('');
+  } else mg.hidden = true;
+}
+
+/* Read + validate the form. Returns {status, ...} */
+function readForm() {
+  const defs = fieldDefs();
+  const missing = [], errors = {}, body = {};
+  const raw = {};
+  for (const d of defs) {
+    const n = num(state.vals[d.id]);
+    if (n === null) { missing.push(d.label.toLowerCase()); continue; }
+    if (d.shoe) {
+      const sys = state.cat === 'Kids' ? 'US' : state.shoeSys;
+      const [lo, hi] = shoeSourceRange(state.cat, sys);
+      if (n < lo || n > hi) { errors[d.id] = 'Check this shoe size.'; continue; }
+      body.shoe = toUS(state.cat, sys, n);
+      raw.shoe = n;
+    } else {
+      const inches = toIn(n);
+      if (inches < d.range[0] || inches > d.range[1]) {
+        errors[d.id] = `Check this. Expected about ${fmtBand(d.range[0], d.range[1])}.`;
+        continue;
+      }
+      raw[d.id] = inches;
+    }
+  }
+  return { missing, errors, raw, body };
+}
+
+function showErrors(errors) {
+  for (const d of fieldDefs()) {
+    const e = $('#err-' + d.id), c = $('#ctl-' + d.id);
+    if (!e) continue;
+    e.textContent = errors[d.id] || '';
+    c.classList.toggle('invalid', !!errors[d.id]);
+  }
+}
+
+function updateGirthNote(raw) {
+  const el = $('#girthNote');
+  if (state.cat === 'Kids') { el.hidden = true; return; }
+  const entries = ['chest', 'waist', 'hips'].filter(k => raw[k] != null).map(k => [k, raw[k]]);
+  if (!entries.length) { el.hidden = true; return; }
+  const [k, v] = entries.reduce((a, b) => b[1] > a[1] ? b : a);
+  const done = entries.length === 3;
+  el.hidden = false;
+  el.innerHTML = done
+    ? `Largest girth: <strong>${fmtLen(v)}</strong> (${k}). This is the measurement used to pick your size.`
+    : `Largest so far: <strong>${fmtLen(v)}</strong> (${k}). Add the other ${3 - entries.length === 1 ? 'measurement' : 'measurements'} so we can find your largest.`;
+}
+
+function statusText(p, foot) {
+  if (p.delta === 0) return { ok: true, text: 'Within range' };
+  const d = p.kind === 'shoe' ? p.delta : fmtDelta(p.delta);
+  if (p.kind === 'shoe') {
+    const n = p.delta, s = n === 1 ? 'size' : 'sizes';
+    return { ok: false, text: p.side === 1 ? `Foot ${n} ${s} smaller than yours` : `Foot ${n} ${s} larger than yours` };
+  }
+  if (p.key === 'inseam') return { ok: false, text: p.side === 1 ? `Legs ${d} short for you` : `Legs ${d} longer than yours` };
+  return { ok: false, text: p.side === 1 ? `Runs ${d} small for you` : `${d} roomier than you` };
+}
+const bodyDisplay = (p, raw) => p.kind === 'shoe' ? 'US ' + p.body : fmtLen(raw[p.key === 'girth' ? '_girth' : p.key]);
+const bandDisplay = p => p.kind === 'shoe'
+  ? 'US ' + (p.band[0] === p.band[1] ? p.band[0] : p.band[0] + '\u2013' + p.band[1])
+  : fmtBand(p.band[0], p.band[1]);
+
+function altWhy(e) {
+  const off = e.parts.filter(p => p.delta > 0);
+  if (!off.length) return 'Fits all your measurements';
+  return off.map(p => statusText(p).text).join(', ');
+}
+const subtitle = row => CAT_LABEL[row.cat] + ' ' + row.name;
+const money = n => '$' + n.toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function figureSvg() {
+  const kids = state.cat === 'Kids';
+  return `<svg class="fig" viewBox="0 0 300 262" role="img" aria-label="Where to take each measurement">
+    <g class="body"><circle cx="150" cy="24" r="13"/>
+      <path d="M108 48 H192 L186 92 L200 128 L186 226 L196 246 H166 L166 226 L150 152 L134 226 L134 246 H104 L114 226 L100 128 L114 92 Z"/></g>
+    <path class="strap" d="M141 36 L124 48 M159 36 L176 48"/>
+    <g data-m="chest"><path class="ml" d="M104 61 Q150 71 196 61"/><path class="lead" d="M197 63 H208"/><text x="212" y="67">Chest</text></g>
+    ${kids ? '' : `<g data-m="waist"><path class="ml" d="M112 96 Q150 106 188 96"/><path class="lead" d="M189 98 H208"/><text x="212" y="102">Waist</text></g>
+    <g data-m="hips"><path class="ml" d="M99 131 Q150 143 201 131"/><path class="lead" d="M202 134 H208"/><text x="212" y="138">Hips</text></g>`}
+    <g data-m="inseam"><path class="lead dash" d="M150 152 H70"/><path class="lead dash" d="M104 246 H64"/><path class="ml" d="M70 152 V246 M64 152 H76 M64 246 H76"/><text transform="rotate(-90 54 199)" x="54" y="199" text-anchor="middle">Inseam</text></g>
+    ${kids ? `<g data-m="height"><path class="lead dash" d="M30 11 H140"/><path class="lead dash" d="M30 246 H64"/><path class="ml" d="M30 11 V246 M24 11 H36 M24 246 H36"/><text transform="rotate(-90 16 130)" x="16" y="130" text-anchor="middle">Height</text></g>` : ''}
+    <g data-m="shoe"><path class="foot" d="M186 226 L196 246 H166 L166 226 Z"/><path class="foot" d="M134 226 V246 H104 L114 226 Z"/><text x="204" y="258">Shoe size</text></g>
+  </svg>`;
+}
+function setHighlight(id) {
+  state.focus = id || null;
+  document.querySelectorAll('.fig [data-m]').forEach(g => g.classList.toggle('on', g.dataset.m === state.focus));
+}
+function renderHowFig() { $('#howFig').innerHTML = figureSvg(); setHighlight(state.focus); }
+
+function gauge(p) {
+  const [lo, hi] = p.band, pad = p.kind === 'shoe' ? 2 : 3;
+  const min = lo - pad, span = (hi + pad) - min;
+  const pos = v => Math.max(0, Math.min(100, (v - min) / span * 100));
+  const bl = p.kind === 'shoe' ? lo : lo - 0.5, bh = p.kind === 'shoe' ? hi : hi + 0.5;  // tape readings round to whole inches
+  const w = Math.max(pos(bh) - pos(bl), 3);
+  return `<span class="gauge ${p.delta === 0 ? 'ok' : 'off'}" aria-hidden="true"><i class="band" style="left:${pos(bl)}%;width:${w}%"></i><i class="mark" style="left:${pos(p.body)}%"></i></span>`;
+}
+
+function renderResult() {
+  const out = $('#resultBody');
+  const jump = $('#jump');
+  const f = readForm();
+  showErrors(f.errors);
+  updateGirthNote(f.raw);
+  jump.classList.remove('show');
+
+  const hasErr = Object.keys(f.errors).length > 0;
+  if (hasErr || f.missing.length) {
+    const nothing = f.missing.length === fieldDefs().length;
+    out.innerHTML = `<div class="empty">${figureSvg()}<p class="empty-title">${hasErr ? 'Check your measurements' : 'Your size will show up here'}</p>
+      <p class="empty-body">${hasErr ? 'One of the numbers looks off. Fix the highlighted field and your size will appear.'
+        : nothing ? 'Fill in your measurements and the closest size appears as you go.'
+        : 'Still to add: ' + esc(listJoin(f.missing)) + '.'}</p></div>`;
+    setHighlight(state.focus);
+    postHeight(); return;
+  }
+
+  // Build the body used for matching (whole inches, as a tape measure reads)
+  const body = { shoe: f.body.shoe };
+  const raw = Object.assign({}, f.raw);
+  if (state.cat === 'Kids') {
+    body.height = Math.round(raw.height); body.chest = Math.round(raw.chest); body.inseam = Math.round(raw.inseam);
+  } else {
+    const g = Math.max(raw.chest, raw.waist, raw.hips);
+    raw._girth = g; body.girth = Math.round(g); body.inseam = Math.round(raw.inseam);
+  }
+  const res = findSize({ cat: state.cat, foot: state.foot, body, modelName: state.model });
+
+  if (res.empty) {
+    out.innerHTML = `<div class="empty"><p class="empty-title">No match in this model</p><p class="empty-body">None of the sizes listed for ${esc(res.model ? res.model.name : 'this model')} suit these measurements. Try another model.</p></div>`;
+    postHeight(); return;
+  }
+
+  const { top, level, alts, foot } = res;
+  const row = top.row;
+  const kicker = level === 'exact' ? 'Your size' : level === 'close' ? 'Closest size' : 'Nearest standard size';
+  const off = top.parts.filter(p => p.delta > 0);
+
+  const verdict = level === 'exact'
+    ? { cls: 'ok', mark: '\u2713', head: 'Matches all your measurements', sub: '' }
+    : level === 'close'
+      ? { cls: 'close', mark: '!', head: "You're between sizes", sub: 'This is the closest standard size. ' + listJoin(off.map(p => p.label.toLowerCase())).replace(/^./, c => c.toUpperCase()) + ' sit' + (off.length === 1 ? 's' : '') + ' just outside its range.' }
+      : { cls: 'none', mark: '\u00d7', head: 'No standard size fits all your measurements', sub: 'The nearest size is a stretch on ' + listJoin(top.parts.filter(p => p.delta > 1).map(p => p.label.toLowerCase())) + '.' };
+
+  const rowsHtml = top.parts.map(p => {
+    const st = statusText(p, foot);
+    return `<tr><td><span class="name">${esc(p.label)}</span><span class="st ${st.ok ? 'ok' : 'off'}">${esc(st.text)}</span>${gauge(p)}</td>
+      <td class="num">${esc(bodyDisplay(p, raw))}</td><td class="num">${esc(bandDisplay(p))}</td></tr>`;
+  }).join('');
+
+  const altsHtml = alts.length ? `<div class="section"><h3>Also worth trying</h3><ul class="alts">${alts.map(e =>
+    `<li><span class="a-name">${esc(e.row.size)} <span>${esc(e.row.name)}</span></span><span class="a-why">${esc(altWhy(e))}</span></li>`).join('')}</ul></div>` : '';
+
+  const notes = [];
+  if (level === 'close') notes.push(alts.length ? 'If you can, try this size and the options above with your usual layers.' : 'If you can, try this size on with your usual layers.');
+  if (level === 'none') notes.push('Try it on in store, or ask your retailer for advice on the nearest size.');
+  if (res.model && res.idealElsewhere) notes.push(`Your closest size overall is ${res.idealElsewhere.row.size} (${res.idealElsewhere.row.name.toLowerCase()}), but it isn't made in the ${res.model.name}. This is the closest the ${res.model.name} comes.`);
+  else if (res.model) notes.push(`Showing sizes made in the ${res.model.name}.`);
+
+  let modelsHtml = '';
+  if (!res.model && MODELS.length) {
+    modelsHtml = res.availableIn.length
+      ? `<div class="section"><h3>Models made in ${esc(row.size)}</h3><ul class="alts models">${res.availableIn.map(m =>
+          `<li><span class="m-main">${m.img ? `<img class="thumb" src="${esc(m.img)}" alt="" loading="lazy">` : ''}<span class="a-name">${esc(m.name)}</span></span><span class="price">RRP ${money(m.rrp)}</span></li>`).join('')}</ul></div>`
+      : `<div class="section"><h3>Models made in ${esc(row.size)}</h3><p class="notes" style="padding-left:0">No current model lists this size.</p></div>`;
+  }
+  let bootHtml = '';
+  if (state.cat !== 'Kids') {
+    // The neoprene stockingfoot is thick, so the boot goes up one size from street size.
+    // Boots come in whole sizes, so a half-size street size rounds up first.
+    const street = body.shoe;
+    const boot = Math.ceil(street) + 1;
+    const menEq = state.cat === 'Women' && boot - 2 >= 5 ? ` (men's ${boot - 2})` : '';
+    const label = state.cat === 'Women' ? "women's " : '';
+    bootHtml = `<div class="section"><h3>Wading boots</h3>
+      <p class="plain">The stockingfoot is thick, so go up a size from your street size. Your US ${street} street size means a <strong>${label}US ${boot}</strong> boot${menEq}.${street % 1 ? ' Boots come in whole sizes, so a half size rounds up first.' : ''}</p></div>`;
+  }
+  const cta = params.get('cta');
+  const ctaHtml = cta && /^https?:\/\//i.test(cta)
+    ? `<a class="cta" href="${esc(cta)}" target="_blank" rel="noopener">${esc(params.get('cta_label') || 'Find a stockist')}</a>` : '';
+
+  out.innerHTML = `
+    <div class="tag">
+      <span class="tag-hole" aria-hidden="true"></span>
+      <p class="tag-kicker">${kicker}</p>
+      <p class="tag-size">${esc(row.size)}</p>
+      <p class="tag-sub">${esc(subtitle(row))}</p>
+      ${res.model ? `<span class="tag-badge">${esc(res.model.name)}, RRP ${money(res.model.rrp)}</span>` : ''}
+    </div>
+    <div class="body">
+      <p class="verdict ${verdict.cls}"><span class="mark" aria-hidden="true">${verdict.mark}</span><span>${esc(verdict.head)}${verdict.sub ? `<small>${esc(verdict.sub)}</small>` : ''}</span></p>
+      <table class="fit"><caption class="sr-only">How your measurements compare with this size</caption>
+        <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">You</th><th scope="col" class="num">This size</th></tr></thead>
+        <tbody>${rowsHtml}</tbody></table>
+      <p class="legend">The shaded bar is this size's range. The marker is you.</p>
+      ${modelsHtml}
+      ${altsHtml}
+      ${bootHtml}
+      ${notes.length ? `<div class="section"><ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
+      ${ctaHtml}
+    </div>`;
+  jump.textContent = 'Your size: ' + row.size + '. See details';
+  jump.classList.add('show');
+  postHeight();
+}
+
+/* ---- events ---- */
+$('#fields').addEventListener('input', e => {
+  const t = e.target;
+  if (t.matches('input[data-f]')) {
+    const clean = t.value.replace(/[^\d.,]/g, '');
+    if (clean !== t.value) t.value = clean;
+    state.vals[t.dataset.f] = clean;
+    renderResult();
+  }
+});
+$('#fields').addEventListener('focusin', e => {
+  const t = e.target;
+  setHighlight(t.id === 'shoeSys' ? 'shoe' : (t.dataset && t.dataset.f) || null);
+});
+$('#fields').addEventListener('focusout', () => setHighlight(null));
+$('#fields').addEventListener('change', e => {
+  if (e.target.id === 'shoeSys') { state.shoeSys = e.target.value; renderResult(); }
+});
+document.querySelectorAll('input[name="cat"]').forEach(r => r.addEventListener('change', () => {
+  state.cat = r.value; state.model = '';
+  syncControls(); renderFields(); renderHowFig(); renderResult();
+}));
+document.querySelectorAll('input[name="unit"]').forEach(r => r.addEventListener('change', () => {
+  const to = r.value; if (to === state.unit) return;
+  for (const k of ['chest', 'waist', 'hips', 'inseam', 'height']) {
+    const n = num(state.vals[k]); if (n === null) continue;
+    state.vals[k] = String(to === 'in' ? r1(n / IN) : Math.round(n * IN));
+  }
+  state.unit = to; renderFields(); renderResult();
+}));
+$('#modelSel').addEventListener('change', e => { state.model = e.target.value; renderResult(); });
+$('#reset').addEventListener('click', () => {
+  state.vals = { chest: '', waist: '', hips: '', inseam: '', shoe: '', height: '' };
+  renderFields(); renderResult();
+  const first = $('#fields input'); if (first) first.focus();
+});
+
+/* ---- iframe auto-height ---- */
+let lastH = 0;
+function postHeight() {
+  if (window.parent === window) return;
+  const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+  if (h !== lastH) { lastH = h; window.parent.postMessage({ type: 'wader-size-finder:height', height: h }, '*'); }
+}
+if (typeof window.ResizeObserver === 'function') new window.ResizeObserver(postHeight).observe(document.body);
+
+syncControls(); renderFields(); renderHowFig(); renderResult();
+</script>
+</body>
+</html>
