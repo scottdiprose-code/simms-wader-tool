@@ -568,7 +568,57 @@ const subtitle = row => CAT_LABEL[row.cat] + ' ' + row.name;
 const money = n => '$' + n.toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function figureSvg() {
-  return '<img class="fig" src="wader-measure-img.svg" alt="Wader measurement guide" loading="lazy">';
+  return `
+    <svg class="fig interactive-fig" viewBox="0 0 595.28 841.89" role="img" aria-labelledby="waderFigTitle waderFigDesc">
+      <title id="waderFigTitle">Wader measurement guide</title>
+      <desc id="waderFigDesc">Interactive measurement guide. Select a measurement field to highlight the matching line on the wader illustration.</desc>
+      <image href="wader-measure-img.svg" x="0" y="0" width="595.28" height="841.89" preserveAspectRatio="xMidYMid meet"></image>
+
+      <g data-m="chest" tabindex="-1" aria-label="Chest measurement">
+        <line class="ml" x1="214" y1="221" x2="381" y2="221"></line>
+        <line class="ml" x1="214" y1="215" x2="214" y2="227"></line>
+        <line class="ml" x1="381" y1="215" x2="381" y2="227"></line>
+        <path class="lead" d="M214 221H174V204"></path>
+        <rect x="120" y="187" width="54" height="23" rx="6" fill="var(--field)" stroke="var(--line)"></rect>
+        <text x="147" y="203" text-anchor="middle">CHEST</text>
+      </g>
+
+      <g data-m="waist" tabindex="-1" aria-label="Waist measurement">
+        <line class="ml" x1="217" y1="303" x2="378" y2="303"></line>
+        <line class="ml" x1="217" y1="297" x2="217" y2="309"></line>
+        <line class="ml" x1="378" y1="297" x2="378" y2="309"></line>
+        <path class="lead" d="M378 303H420V286"></path>
+        <rect x="420" y="269" width="58" height="23" rx="6" fill="var(--field)" stroke="var(--line)"></rect>
+        <text x="449" y="285" text-anchor="middle">WAIST</text>
+      </g>
+
+      <g data-m="hips" tabindex="-1" aria-label="Hip measurement">
+        <line class="ml" x1="214" y1="353" x2="381" y2="353"></line>
+        <line class="ml" x1="214" y1="347" x2="214" y2="359"></line>
+        <line class="ml" x1="381" y1="347" x2="381" y2="359"></line>
+        <path class="lead" d="M214 353H168V338"></path>
+        <rect x="108" y="321" width="60" height="23" rx="6" fill="var(--field)" stroke="var(--line)"></rect>
+        <text x="138" y="337" text-anchor="middle">HIPS</text>
+      </g>
+
+      <g data-m="inseam" tabindex="-1" aria-label="Inseam measurement">
+        <line class="ml" x1="299" y1="378" x2="299" y2="640"></line>
+        <line class="ml" x1="293" y1="378" x2="305" y2="378"></line>
+        <line class="ml" x1="293" y1="640" x2="305" y2="640"></line>
+        <path class="lead" d="M299 510H360"></path>
+        <rect x="360" y="498" width="70" height="23" rx="6" fill="var(--field)" stroke="var(--line)"></rect>
+        <text x="395" y="514" text-anchor="middle">INSEAM</text>
+      </g>
+
+      <g data-m="shoe" tabindex="-1" aria-label="Shoe size measurement">
+        <line class="ml" x1="325" y1="738" x2="385" y2="738"></line>
+        <line class="ml" x1="325" y1="732" x2="325" y2="744"></line>
+        <line class="ml" x1="385" y1="732" x2="385" y2="744"></line>
+        <path class="lead" d="M355 738V764H407"></path>
+        <rect x="407" y="752" width="75" height="23" rx="6" fill="var(--field)" stroke="var(--line)"></rect>
+        <text x="444.5" y="768" text-anchor="middle">SHOE SIZE</text>
+      </g>
+    </svg>`;
 }
 function setHighlight(id) {
   state.focus = id || null;
